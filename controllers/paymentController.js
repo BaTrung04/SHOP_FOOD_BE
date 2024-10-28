@@ -1,34 +1,29 @@
 const catchAsyncErrors = require("../middlewares/catchAsyncErrors");
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+exports.checkPaymentStatus = catchAsyncErrors(async (req, res, next) => {
+  const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
-// Process stripe payments   =>   /api/v1/payment/process
-exports.processPayment = catchAsyncErrors(async (req, res, next) => {
-  console.log(req.body.amount);
-  const paymentIntent = await stripe.paymentIntents.create({
-    // create content payment
-    amount: req.body.amount,
-    currency: "vnd",
+  const { session_id } = req.query;
 
-    metadata: { integration_check: "accept_a_payment" }, // Các đối tượng Stripe có thể cập nhật — bao gồm Tài khoản , Khoản phí , Khách hàng , Nội dung thanh toán , Tiền hoàn lại , Đăng ký và Chuyển khoản —có thông số.
-  });
+  const session = await stripe.checkout.sessions.retrieve(session_id);
 
-  console.log(paymentIntent);
-  res.status(200).json({
-    success: true,
-    client_secret: paymentIntent.client_secret, // Json API client_secret
-  });
-});
-
-// Send stripe API Key   =>   /api/v1/stripeapi
-exports.sendStripApi = catchAsyncErrors(async (req, res, next) => {
-  res.status(200).json({
-    stripeApiKey: process.env.STRIPE_API_KEY,
-  });
+  if (session.payment_status === "paid") {
+    res.json({
+      payment_status: "paid",
+      payment_intent: session.payment_intent,
+    });
+  } else {
+    res.json({ payment_status: "unpaid" });
+  }
 });
 
 exports.processPaymentLink = catchAsyncErrors(async (req, res, next) => {
+  const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
   const { products } = req.body;
+
+  const user = req.user;
+
   const lineItems = products.map((product) => ({
     price_data: {
       currency: "vnd",
@@ -40,12 +35,15 @@ exports.processPaymentLink = catchAsyncErrors(async (req, res, next) => {
     },
     quantity: product.quantity,
   }));
+
   const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
     line_items: lineItems,
     mode: "payment",
     success_url: "http://localhost:5173/success",
     cancel_url: "http://localhost:5173/cancel",
+    customer_email: user.email,
   });
-  res.json({ id: session.id });
+
+  res.json({ url: session.url, sessionId: session.id });
 });
