@@ -16,7 +16,7 @@ router
   .route("/admin/news")
   .post(isAuthenticatedUser, authorizeRoles("admin"), newNew);
 
-router.route("/news/:id").get(isAuthenticatedUser, getSingleNew);
+router.route("/news/:id").get(getSingleNew);
 router
   .route("/admin/news/:id")
   .put(isAuthenticatedUser, authorizeRoles("admin"), updateNew);
