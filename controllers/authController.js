@@ -3,6 +3,7 @@ const User = require("../models/user");
 const ErrorHandler = require("../utils/errorHandler");
 const catchAsyncErrors = require("../middlewares/catchAsyncErrors");
 const sendToken = require("../utils/jwtToken");
+const flattenAndRemoveAccents = require("../utils/plattenString");
 
 const crypto = require("crypto");
 const cloudinary = require("cloudinary");
@@ -30,6 +31,11 @@ exports.registerUser = catchAsyncErrors(async (req, res, next) => {
     crop: "scale",
   });
 
+  
+  const namePlatten = req.body.name
+    ? flattenAndRemoveAccents(req.body.name)
+    : null;
+
   const user = await User.create({
     name,
     email,
@@ -38,6 +44,7 @@ exports.registerUser = catchAsyncErrors(async (req, res, next) => {
       public_id: result.public_id,
       url: result.secure_url,
     },
+    search: namePlatten,
   });
 
   sendToken(user, 200, res);
