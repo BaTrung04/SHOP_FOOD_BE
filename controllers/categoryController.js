@@ -44,36 +44,39 @@ exports.getCategory = catchAsyncErrors(async (req, res, next) => {
   limit = isNaN(limit) || limit <= 0 ? 10 : Number(limit);
   page = isNaN(page) || page <= 0 ? 1 : Number(page);
 
-  const apiFeatures = new APIFeatures(
+  const apiFeaturesForCount = new APIFeatures(
     category.find().populate(),
+    {
+      keyword,
+    },
+    "categoryName"
+  )
+    .search()
+    .filter()
+
+  const totalCategoriesCount = await apiFeaturesForCount.query.countDocuments();
+
+  const apiFeaturesForPagination = new APIFeatures(
+    category.find(),
     {
       keyword,
       limit,
       page,
     },
-    "search"
+    "categoryName"
   )
     .search()
-    .filter();
+    .filter()
+    .pagination();
 
-  apiFeatures.query = apiFeatures.query.sort({ createdAt: -1 });
 
-  let categories = await apiFeatures.query;
-  let filteredCategoryCount = categories.length;
-
-  apiFeatures.pagination(limit);
-  categories = await apiFeatures.query;
-
-  categories = categories.map((product) => {
-    const { search, ...rest } = product._doc;
-    return rest;
-  });
+  let categories = await apiFeaturesForPagination.query;
 
   res.status(200).json({
-    total: filteredCategoryCount,
+    total: totalCategoriesCount,
     limit: limit,
     page: page,
-    totalPage: Math.ceil(filteredCategoryCount / limit),
+    totalPage: Math.ceil(totalCategoriesCount / limit),
     rows: categories,
   });
 });

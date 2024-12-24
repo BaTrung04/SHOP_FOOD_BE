@@ -9,10 +9,20 @@ class APIFeatures {
   search() {
     const keyword = this.queryStr.keyword
       ? {
-          [this.fieldSearch || "name"]: {
-            $regex: flattenAndRemoveAccents(this.queryStr.keyword),
-            $options: "i",
-          },
+          $or: [
+            {
+              [this.fieldSearch || "name"]: {
+                $regex: this.queryStr.keyword,
+                $options: "i",
+              },
+            },
+            {
+              [this.fieldSearch || "name"]: {
+                $regex: flattenAndRemoveAccents(this.queryStr.keyword),
+                $options: "i",
+              },
+            },
+          ],
         }
       : {};
 
@@ -35,8 +45,8 @@ class APIFeatures {
     return this;
   }
 
-  pagination(perPage) {
-    const numPerPage = +perPage;
+  pagination() {
+    const numPerPage = this.queryStr.limit;
     const currentPage = Number(this.queryStr.page) || 1;
     const skip = numPerPage * (currentPage - 1);
 

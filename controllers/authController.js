@@ -7,6 +7,7 @@ const flattenAndRemoveAccents = require("../utils/plattenString");
 
 const crypto = require("crypto");
 const cloudinary = require("cloudinary");
+const APIFeatures = require("../utils/apiFeatures");
 
 // Register a user   => /api/v1/register
 exports.registerUser = catchAsyncErrors(async (req, res, next) => {
@@ -160,11 +161,49 @@ exports.logout = catchAsyncErrors(async (req, res, next) => {
 
 // Get all users   =>   /api/v1/admin/users
 exports.allUsers = catchAsyncErrors(async (req, res, next) => {
-  const users = await User.find();
+  let { keyword, limit = 10, page = 1 } = req.query;
+
+  limit = isNaN(limit) || limit <= 0 ? 10 : Number(limit);
+  page = isNaN(page) || page <= 0 ? 1 : Number(page);
+
+  const apiFeaturesForCount = new APIFeatures(
+    User.find(),
+    {
+      keyword,
+    },
+    "search"
+  )
+    .search()
+    .filter();
+
+  const totalUsersCount = await apiFeaturesForCount.query.countDocuments();
+
+  const apiFeaturesForPagination = new APIFeatures(
+    User.find(),
+    {
+      keyword,
+      limit,
+      page,
+    },
+    "search"
+  )
+    .search()
+    .filter()
+    .pagination();
+
+  let users = await apiFeaturesForPagination.query;
+
+  users = users.map((user) => {
+    const { search, password, ...rest } = user._doc;
+    return rest;
+  });
 
   res.status(200).json({
-    success: true,
-    users,
+    total: totalUsersCount,
+    limit: limit,
+    page: page,
+    totalPage: Math.ceil(totalUsersCount / limit),
+    rows: users,
   });
 });
 

@@ -3,6 +3,7 @@ const Product = require("../models/product");
 
 const ErrorHandler = require("../utils/errorHandler");
 const catchAsyncErrors = require("../middlewares/catchAsyncErrors");
+const APIFeatures = require("../utils/apiFeatures");
 
 // Create a new order   =>  /api/v1/order/new
 exports.newOrder = catchAsyncErrors(async (req, res, next) => {
@@ -63,7 +64,12 @@ exports.myOrders = catchAsyncErrors(async (req, res, next) => {
 
 // Get all orders - ADMIN  =>   /api/v1/admin/orders/
 exports.allOrders = catchAsyncErrors(async (req, res, next) => {
-  const orders = await Order.find();
+  let { keyword: orderStatus, limit = 10, page = 1 } = req.query;
+
+  limit = isNaN(limit) || limit <= 0 ? 10 : Number(limit);
+  page = isNaN(page) || page <= 0 ? 1 : Number(page);
+
+  let orders = await Order.find();
 
   let totalAmount = 0;
 
@@ -71,10 +77,42 @@ exports.allOrders = catchAsyncErrors(async (req, res, next) => {
     totalAmount += order.totalPrice;
   });
 
+  const apiFeaturesForCount = new APIFeatures(
+    Order.find(),
+    {
+      keyword: orderStatus,
+    },
+    "orderStatus"
+  )
+    .search()
+    .filter();
+
+  const totalOrdersCount = await apiFeaturesForCount.query.countDocuments();
+
+  const apiFeaturesForPagination = new APIFeatures(
+    Order.find(),
+    {
+      keyword: orderStatus,
+      limit,
+      page,
+    },
+    "orderStatus"
+  )
+    .search()
+    .filter()
+    .pagination();
+
+  orders = await apiFeaturesForPagination.query;
+
   res.status(200).json({
-    success: true,
-    totalAmount,
-    orders,
+    total: totalOrdersCount,
+    limit: limit,
+    page: page,
+    totalPage: Math.ceil(totalOrdersCount / limit),
+    rows: orders,
+    metadata: {
+      totalAmount
+    }
   });
 });
 
