@@ -69,14 +69,15 @@ exports.allOrders = catchAsyncErrors(async (req, res, next) => {
   limit = isNaN(limit) || limit <= 0 ? 10 : Number(limit);
   page = isNaN(page) || page <= 0 ? 1 : Number(page);
 
-  let orders = await Order.find();
-
   let totalAmount = 0;
 
-  orders.forEach((order) => {
+  // Calculate total amount
+  let allOrders = await Order.find();
+  allOrders.forEach((order) => {
     totalAmount += order.totalPrice;
   });
 
+  // Create API Features for filtering and sorting
   const apiFeaturesForCount = new APIFeatures(
     Order.find(),
     {
@@ -102,7 +103,13 @@ exports.allOrders = catchAsyncErrors(async (req, res, next) => {
     .filter()
     .pagination();
 
-  orders = await apiFeaturesForPagination.query;
+  // Sort orders by createdAt in descending order
+  apiFeaturesForPagination.query = apiFeaturesForPagination.query.sort({
+    createdAt: -1,
+  });
+
+  // Fetch paginated orders
+  const orders = await apiFeaturesForPagination.query;
 
   res.status(200).json({
     total: totalOrdersCount,
@@ -111,8 +118,8 @@ exports.allOrders = catchAsyncErrors(async (req, res, next) => {
     totalPage: Math.ceil(totalOrdersCount / limit),
     rows: orders,
     metadata: {
-      totalAmount
-    }
+      totalAmount,
+    },
   });
 });
 
@@ -173,3 +180,19 @@ exports.getMonthlyIncome = async (req, res, next) => {
     res.status(500).json(err);
   }
 };
+
+// Delete order - ADMIN  =>   /api/v1/admin/order/:id
+exports.deleteOrder = catchAsyncErrors(async (req, res, next) => {
+  const order = await Order.findById(req.params.id);
+
+  if (!order) {
+    return next(new ErrorHandler("Không tìm thấy đơn hàng", 404));
+  }
+
+  await order.remove();
+
+  res.status(200).json({
+    success: true,
+    message: "Đơn hàng đã được xóa thành công",
+  });
+});

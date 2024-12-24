@@ -52,7 +52,7 @@ exports.getCategory = catchAsyncErrors(async (req, res, next) => {
     "categoryName"
   )
     .search()
-    .filter()
+    .filter();
 
   const totalCategoriesCount = await apiFeaturesForCount.query.countDocuments();
 
@@ -69,7 +69,9 @@ exports.getCategory = catchAsyncErrors(async (req, res, next) => {
     .filter()
     .pagination();
 
-
+  apiFeaturesForPagination.query = apiFeaturesForPagination.query.sort({
+    createdAt: -1,
+  });
   let categories = await apiFeaturesForPagination.query;
 
   res.status(200).json({
