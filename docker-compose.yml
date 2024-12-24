@@ -1,10 +1,32 @@
 services:
+  shop-food-be:
+    build: .
+    ports:
+      - "${PORT}:${PORT}"
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+    volumes:
+      - ./:/shop-food-be
+    networks:
+      - shared-network
+
   mongodb:
     image: mongo:latest
-    container_name: mongodb
-    restart: always
     environment:
       MONGO_INITDB_ROOT_USERNAME: adminTrung
       MONGO_INITDB_ROOT_PASSWORD: 123456
     ports:
       - "27017:27017"
+    volumes:
+      - be-db_data:/data/db
+    networks:
+      - shared-network
+
+volumes:
+  be-db_data:
+
+networks:
+  shared-network:
+    external: true
