@@ -19,7 +19,11 @@ exports.newOrder = catchAsyncErrors(async (req, res, next) => {
 
   const order = await Order.create({
     orderItems,
-    shippingInfo,
+
+    shippingInfo: {
+      ...shippingInfo,
+      name: req.user.name, // Lấy name từ req.user và lưu vào shippingInfo
+    },
     itemsPrice,
     taxPrice,
     shippingPrice,
@@ -28,7 +32,7 @@ exports.newOrder = catchAsyncErrors(async (req, res, next) => {
     paidAt: Date.now(),
     user: req.user._id,
   });
-
+  console.log(req.user.name);
   res.status(200).json({
     success: true,
     order,
@@ -110,7 +114,9 @@ exports.allOrders = catchAsyncErrors(async (req, res, next) => {
 
   // Fetch paginated orders
   const orders = await apiFeaturesForPagination.query;
-
+  orders.forEach((order) => {
+    order.shippingInfo.nam = req.user.name; // Lấy name từ req.user
+  });
   res.status(200).json({
     total: totalOrdersCount,
     limit: limit,
